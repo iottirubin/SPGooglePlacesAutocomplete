@@ -3,19 +3,52 @@
 //  SPGooglePlacesAutocomplete
 //
 //  Created by Stephen Poletto on 7/18/12.
+//  Modified by Shahar Hadas on 3/26/2014
 //  Copyright (c) 2012 Stephen Poletto. All rights reserved.
+//  Copyright (c) 2014 Sparq. All rights reserved.
 //
 
 #import "SPGooglePlacesAutocompleteUtilities.h"
 
 @implementation NSArray(SPFoundationAdditions)
 - (id)onlyObject {
-    return [self count] == 1 ? [self objectAtIndex:0] : nil;
+    return [self count] >= 1 ? self[0] : nil;
 }
 @end
 
+NSArray *SPGooglePlacesAutocompletePlaceTypeNames(void)
+{
+    static NSMutableArray *names = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        names = [NSMutableArray array];
+
+        [names insertObject:@"" atIndex:SPPlaceTypeAll];
+
+        [names insertObject:@"geocode" atIndex:SPPlaceTypeGeocode];
+	[names insertObject:@"address" atIndex:SPPlaceTypeAddress];
+        [names insertObject:@"establishment" atIndex:SPPlaceTypeEstablishment];
+        [names insertObject:@"(regions)" atIndex:SPPlaceTypeRegions];
+        [names insertObject:@"(cities)" atIndex:SPPlaceTypeCities];
+        [names insertObject:@"address" atIndex:SPPlaceTypeAddress];
+
+    });
+
+    return names;
+}
+
 SPGooglePlacesAutocompletePlaceType SPPlaceTypeFromDictionary(NSDictionary *placeDictionary) {
-    return [[placeDictionary objectForKey:@"types"] containsObject:@"establishment"] ? SPPlaceTypeEstablishment : SPPlaceTypeGeocode;
+    NSUInteger index;
+
+    for (NSString *type in placeDictionary[@"types"]) {
+        index = [SPGooglePlacesAutocompletePlaceTypeNames() indexOfObject:type];
+
+        if (index != NSNotFound) {
+            return (SPGooglePlacesAutocompletePlaceType)index;
+        }
+    }
+
+    return SPPlaceTypeGeocode;
 }
 
 NSString *SPBooleanStringForBool(BOOL boolean) {
@@ -23,24 +56,7 @@ NSString *SPBooleanStringForBool(BOOL boolean) {
 }
 
 NSString *SPPlaceTypeStringForPlaceType(SPGooglePlacesAutocompletePlaceType type) {
-    return (type == SPPlaceTypeGeocode) ? @"geocode" : @"establishment";
-}
-
-BOOL SPEnsureGoogleAPIKey() {
-    BOOL userHasProvidedAPIKey = YES;
-    if ([kGoogleAPIKey isEqualToString:@"YOUR_API_KEY"]) {
-        userHasProvidedAPIKey = NO;
-        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"API Key Needed" message:@"Please replace kGoogleAPIKey with your Google API key." delegate:nil cancelButtonTitle:@"Dismiss" otherButtonTitles:nil];
-        [alert show];
-        [alert release];
-    }
-    return userHasProvidedAPIKey;
-}
-
-void SPPresentAlertViewWithErrorAndTitle(NSError *error, NSString *title) {
-    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:title message:[error localizedDescription] delegate:nil cancelButtonTitle:@"Dismiss" otherButtonTitles:nil];
-    [alert show];
-    [alert release];
+    return [SPGooglePlacesAutocompletePlaceTypeNames() objectAtIndex:type];
 }
 
 extern BOOL SPIsEmptyString(NSString *string) {
